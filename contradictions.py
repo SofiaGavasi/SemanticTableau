@@ -1,4 +1,4 @@
-
+from tree import TreeNode
 import pandas as pd
 import spacy
 nlp = spacy.load("en_core_web_sm")
@@ -66,6 +66,8 @@ def compare(true_st, false_st):
 
 
     if verb_1 != verb_2:
+        return False
+    if ("verb" in s1_df.loc[0, "Not operator"] and not "verb" in s2_df.loc[0, "Not operator"]) or ("verb" in s2_df.loc[0, "Not operator"] and not "verb" in s1_df.loc[0, "Not operator"]):
         return False
     else:
 
