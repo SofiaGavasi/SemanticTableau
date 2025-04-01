@@ -588,7 +588,7 @@ def replace_pronouns(sentence: str) -> str:
         if token.pos_ == "PROPN":  # Store the last encountered proper noun
             proper_noun = token.text
         
-        if token.pos_ == "PRON" and proper_noun:  # Replace pronoun with proper noun
+        if token.pos_ == "PRON" and proper_noun and token.text in {"he", "she"}:  # Replace pronoun with proper noun
             tokens.append(proper_noun)
         else:
             tokens.append(token.text)
@@ -640,7 +640,7 @@ def add_all_to_plural_subject(text):
 
     while i < len(doc):
         token = doc[i]
-        if token.pos_ == "NOUN" and token.tag_ == "NNS" and token.dep_ == "nsubj":
+        if token.pos_ == "NOUN" and token.tag_ == "NNS" and token.dep_ == "nsubj" and not token.text[0].isupper():
             if i > 0:
                 if doc[i-1].pos_ == "ADJ":
                     if i > 1 and (doc[i-2].pos_ != "DET" or doc[i-2].text == "the") :
