@@ -628,11 +628,12 @@ def create_variable(sentence_df, sign, existential, quantifier, negate):
             for token in doc:
                 verb_lemma = token.lemma_
             if verb_lemma == "be" and obj == "":
-                obj = sentence_split[int(sentence_df.loc[0, "Verb"])+1]
-                doc = nlp(or_sentence)
-                for k,tok in enumerate(doc):
-                    if k ==int(sentence_df.loc[0, "Verb"])+1 and (tok.dep_ == "det" or tok.pos_ == "DET") :        
-                        obj = sentence_split[int(sentence_df.loc[0, "Verb"])+2]
+                if len(sentence_split) > int(sentence_df.loc[0, "Verb"])+1:
+                    obj = sentence_split[int(sentence_df.loc[0, "Verb"])+1]
+                    doc = nlp(or_sentence)
+                    for k,tok in enumerate(doc):
+                        if k ==int(sentence_df.loc[0, "Verb"])+1 and (tok.dep_ == "det" or tok.pos_ == "DET") :        
+                            obj = sentence_split[int(sentence_df.loc[0, "Verb"])+2]
                 
             
             values = []
@@ -699,11 +700,12 @@ def create_variable(sentence_df, sign, existential, quantifier, negate):
             for token in doc:
                 verb_lemma = token.lemma_
             if verb_lemma == "be" and obj == "":
-                obj = sentence_split[int(sentence_df.loc[0, "Verb"])+1]
-                doc = nlp(or_sentence)
-                for k,tok in enumerate(doc):
-                    if k ==int(sentence_df.loc[0, "Verb"])+1 and (tok.dep_ == "det" or tok.pos_ == "DET") :        
-                        obj = sentence_split[int(sentence_df.loc[0, "Verb"])+2]
+                if len(sentence_split) > int(sentence_df.loc[0, "Verb"])+1:
+                    obj = sentence_split[int(sentence_df.loc[0, "Verb"])+1]
+                    doc = nlp(or_sentence)
+                    for k,tok in enumerate(doc):
+                        if k ==int(sentence_df.loc[0, "Verb"])+1 and (tok.dep_ == "det" or tok.pos_ == "DET") :        
+                            obj = sentence_split[int(sentence_df.loc[0, "Verb"])+2]
 
             values = []
             new_sentences = ""
