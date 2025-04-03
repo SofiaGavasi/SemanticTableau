@@ -384,21 +384,25 @@ def display_node(node, depth=0):
 
 
 if st.button("Run Semantic Tableau Solver"):
+    
     with st.spinner("Processing..."):
-        TreeNode.reset_tree()
-        root, all_contradictions = make_tree_inference(input_text, conclusion)
-        st.session_state.tree_root = root
-        st.session_state.contradiction_status = all_contradictions
-        st.success("Tree generated. All branches closed: {}".format("Yes" if all_contradictions else "No"))
+        try:
+            TreeNode.reset_tree()
+            root, all_contradictions = make_tree_inference(input_text, conclusion)
+            st.session_state.tree_root = root
+            st.session_state.contradiction_status = all_contradictions
+            st.success("Tree generated. All branches closed: {}".format("Yes" if all_contradictions else "No"))
 
-       
-        display_node(root)
+        
+            display_node(root)
 
-        st.markdown("---")
-        if all_contradictions:
-            st.success("All branches have been closed. This means the initial statement logically leads to a contradiction in every case — the inference is **logically valid**.")
-        else:
-            st.warning("Some branches remain open. This means there is at least one interpretation where the statements hold without contradiction — the inference is **not necessarily valid**.")
+            st.markdown("---")
+            if all_contradictions:
+                st.success("All branches have been closed. This means the initial statement logically leads to a contradiction in every case — the inference is **logically valid**.")
+            else:
+                st.warning("Some branches remain open. This means there is at least one interpretation where the statements hold without contradiction — the inference is **not necessarily valid**.")
+        except Exception as e:
+            st.error(" Oops! Something went wrong while processing your sentence. Please check your input for typos or unsupported sentence structures.")
 
 
 
@@ -413,28 +417,31 @@ if st.session_state.tree_root:
         submitted = st.form_submit_button("Apply Statement to Open Branches")
 
     if submitted and new_statement:
-        st.info(f"New statement added: '{new_statement}'")
-        leaf_nodes = get_leaves(st.session_state.tree_root)
-        open_nodes = [node for node in leaf_nodes if not node.value.get("Contradiction", pd.Series(False)).any()]
+        try:
+            st.info(f"New statement added: '{new_statement}'")
+            leaf_nodes = get_leaves(st.session_state.tree_root)
+            open_nodes = [node for node in leaf_nodes if not node.value.get("Contradiction", pd.Series(False)).any()]
 
 
-        for node in open_nodes:
-            df = node.value
-           # display_node(node)
+            for node in open_nodes:
+                df = node.value
+            # display_node(node)
 
 
-            current_true = df.at[0, "True Statements"]
-            if isinstance(current_true, list):
-                current_true.append(new_statement)
-            elif current_true == "":
-                current_true = [new_statement]
-            else:
-                current_true = [current_true, new_statement]
-            
-            subtree_root, _ = make_tree_inference_defe(current_true, df.at[0, "False Statements"], new_statement)
-            node.children = [subtree_root]
+                current_true = df.at[0, "True Statements"]
+                if isinstance(current_true, list):
+                    current_true.append(new_statement)
+                elif current_true == "":
+                    current_true = [new_statement]
+                else:
+                    current_true = [current_true, new_statement]
+                
+                subtree_root, _ = make_tree_inference_defe(current_true, df.at[0, "False Statements"], new_statement)
+                node.children = [subtree_root]
 
-        st.success("Defeasibility applied. Updated open branches with the new statement.")
-        display_node(st.session_state.tree_root)
+            st.success("Defeasibility applied. Updated open branches with the new statement.")
+            display_node(st.session_state.tree_root)
+        except Exception as e:
+            st.error(" Oops! Something went wrong while processing your sentence. Please check your input for typos or unsupported sentence structures.")
 else:
     st.info("Run the solver above first before using defeasibility.")
