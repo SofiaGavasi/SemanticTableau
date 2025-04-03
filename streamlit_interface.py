@@ -4,7 +4,7 @@ from tree import TreeNode
 import pandas as pd
 
 rule_explanations = {
-    0: "Initialization: Just place the sentence into the node.",
+    0: "Initialization: Just placing the sentence into the node.",
     1: "AND on the left (positive): Break 'A and B' into A and B.",
     2: "AND on the right (negative): Create two branches, one with ¬A and one with ¬B.",
     3: "OR on the left (positive): Create two branches, one with A and one with B.",
@@ -41,7 +41,80 @@ examples = {
 
 st.set_page_config(page_title="Semantic Tableau Solver", layout="wide")
 st.title("Semantic Tableau Visualizer")
+
+st.markdown("<br><br>", unsafe_allow_html=True)
+
+with st.expander("**What is the Semantic Tableau Method? (Click to expand for more information)**"):
+    st.markdown("""
+                
+
+                
+The **Semantic Tableau** is a method used in logic to determine whether a conclusion logically follows from a set of premises.
+
+---
+
+### The intuition:
+Here is an example. You have the following premises: "If I am sad, then I cry", and "I am sad". These are sentences you know to be true. 
+You then have a conclusion: "I cry". 
+                
+Your goal is to determine whether this conclusion logically follows the premises, meaning that this conclusion is always true, given the premises. How can you prove this?
+                
+The tableau solver works by assuming that the premises are true, and the conclusion is false. 
+                
+It will then try to find contradictions within this assumption. If we discover that assuming the conclusion is false always leads to a contradiction, then we know that the conclusion must be true!
+                
+Therefore, if you find only contradictions, you know that your original inference (premises + conclusion) is **logically valid**
+
+But how does the solver find these contradictions?
+                
+The tableau solver builds a logic tree, starting with the initial premises and conclusion, and applying rules to these statements to solve them until we find contradictions (or until they can no longer be solved).
+Each node of the tree will contain statements that we know to be true and statements we know to be false. 
+
+---
+
+### How it Starts:
+- All **premises** are placed on the **true** side.
+- The **conclusion** is placed on the **false** side.
+- Then, the system starts breaking down complex statements using **logical rules** until:
+  - We hit a **contradiction** (branch closes), or
+  - We reach a point where no more rules apply and **no contradiction appears** (branch remains open).
+
+---
+
+### Why It Works:
+- The method is based on the principle of **reductio ad absurdum** — assuming the opposite of what you want to prove and showing it leads to an inconsistency.
+- If **all branches** close (contradiction in every case), it means there's **no way** the conclusion could be false if the premises are true — the argument is **logically valid**.
+- If **any branch** remains open, then there’s at least one logical scenario where the conclusion doesn’t follow — the argument is **not universally valid**.
+
+---
+
+### How It Solves:
+The solver uses a set of logic rules to simplify or split statements. Here are a few examples:
+
+- **¬(A or B)** → both ¬A and ¬B must be true. Example: "It is not the case that I am sad or I am tired" is the same as saying "I am not sad and I am not tired".
+- **If A then B** (A → B) is true → either ¬A is true, or B is true. Example: "If it rains then the ground is wet" is the same as saying "Either it is not raining, or the ground is wet".
+
+Sometimes, while applying these rules, the tree generates 2 branches. This happens because you have reached a point where there are two different possible explanations for what could be true — but you're not sure which one it is yet. 
+                
+Instead of picking one, you explore both options separately, like a fork in the road. 
+
+For example:
+
+If we know that "Either Alice is dancing or Bob is singing", but we don’t know which one is true — it could be Alice, Bob, or both — so we branch into:
+
+- One path where we assume Alice is dancing is true.
+- Another path where we assume Bob is singing is true.
+  
+The tree keeps solving each of these branches separately. If both lead to a contradiction, we know the original assumption doesn't work. But if one of them still works, the whole argument might still be logically possible.
+                
+
+""")
+    
+st.markdown("<br><br>", unsafe_allow_html=True)
+
 st.markdown("""
+            
+
 ### Welcome to the Semantic Tableau Visualizer
 
 Enter a logical sentence and an optional conclusion. The app will automatically build a **semantic tableau** (logic tree) that breaks down the reasoning process step by step, applying formal logic rules to determine whether the conclusion follows.
@@ -72,7 +145,87 @@ Enter a logical sentence and an optional conclusion. The app will automatically 
   - At least one **counterexample** exists where the premises are true and the conclusion does not follow.
   - Thus, the argument is **not universally valid**.
 
+            
+
 """)
+
+st.markdown("<br><br>", unsafe_allow_html=True)
+
+with st.expander("**What kind of sentences can I write in 'Custom'? (Click for details)**"):
+    st.markdown("""
+                
+
+This solver understands **simple, well-formed English sentences** — but keep in mind, it doesn't have common sense or real-world knowledge. It only knows the logic you give it.
+
+---
+
+### General Guidelines:
+- Keep sentences **short** and **simple**.
+- Use **proper grammar** and avoid typos — otherwise, the system may get confused.
+- Use **full stops** to separate multiple sentences.
+- Proper names (like Alice, Bob, etc.) should start with a **capital letter**.
+- Sentences should describe facts or rules, not questions or commands.
+- Avoid idioms or abstract language — be literal and clear.
+
+---
+
+### Sentence types you can use:
+
+#### ✅ **Basic Statements**:
+- `The cat jumps.`
+- `Alice sings.`
+- `I am happy.`
+
+#### ✅ **Negations**:
+- `The dog doesn't bark.`
+- `Nobody smiles.`
+- `No student jumps.`
+
+#### ✅ **Conjunctions (AND)**:
+- `The lamp is golden and the lamp is heavy.`
+- `Luisa and Socrates are happy.`
+
+#### ✅ **Disjunctions (OR)**:
+- `Either Alice sings or Bob dances.`
+- `I eat or I drink.`
+- `Mary doesn't eat fish or meat.`
+
+#### ✅ **Conditionals (IF...THEN)**:
+- `If the cat sings, then Bob smiles.`
+- `If nobody sings, then Alice cries.`
+
+#### ✅ **Biconditionals (IF AND ONLY IF)**:
+- `Alice dances if and only if Bob sings.`
+
+#### ✅ **Causal-like language** *(mapped to logic)*:
+- `Bob jumps because the bell rings.`
+
+#### ✅ **Quantifiers**:
+- `All students read.`
+- `Some people run.`
+- `Nobody eats.`
+- `I don't love anyone.`
+- `Everyone hates everyone.`
+
+---
+
+### Special Notes:
+- The system **does not understand real-world context** — so you can say things like:
+  - `"If the cat teaches the piano, then every student jumps the newspaper."` and it will still try to process it logically.
+- **Spelling and grammar matter.** The sentence:
+  - ✅ `The cat jumps.`
+  - ❌ `The cat jump.` ← (incorrect verb conjugation)
+
+- Proper nouns must be **capitalized** (`Alice`, `Bob`, `Mary`).
+- **Compound names** like `The tall man` or `A happy student` are fine.
+- **Unrecognized names** may cause errors — stick with simple names or those used in examples.
+
+         
+
+""")
+
+
+st.markdown("<br><br>", unsafe_allow_html=True)
 
 if "tree_root" not in st.session_state:
     st.session_state.tree_root = None
