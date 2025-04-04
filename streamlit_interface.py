@@ -282,7 +282,8 @@ def highlight_dataframe(df, highlight_list, true_contradictions, false_contradic
 
 
 
-def display_node(node, depth=0):
+def display_node(node, depth=0, parent=None):
+
     # if node.node_id == 0:
     #     for child in node.children:
     #         display_node(child, depth + 1)
@@ -326,12 +327,49 @@ def display_node(node, depth=0):
 
             for idx, row in df.iterrows():
                 rule_id = row.get("Rule")
-                explanation = rule_explanations.get(rule_id, "Unknown rule")
-                parent = row.get("Parent")
-                if pd.notna(parent):
-                    st.markdown(f"**Rule {rule_id}** applied from _\"{parent}\"_: {explanation}")
+                rule_label = rule_explanations.get(rule_id, "Unknown rule")
+                parent_sentence = row.get("Parent", "")
+                highlight = row.get("Highlight", [])
+
+                if isinstance(highlight, str):
+                    highlight = [highlight]
+                elif pd.isna(highlight):
+                    highlight = []
+
+
+                branching_rules = [2, 3, 5, 8]
+                sibling_highlights = []
+                if rule_id in branching_rules and parent:
+                    for sibling in parent.children:
+                        if sibling is not node and isinstance(sibling.value, pd.DataFrame):
+                            highlights = sibling.value["Highlight"].dropna().tolist()
+                            for h in highlights:
+                                if isinstance(h, list):
+                                    sibling_highlights.extend(h)
+                                else:
+                                    sibling_highlights.append(h)
+
+
+                if pd.notna(parent_sentence):
+                    if rule_id in branching_rules and sibling_highlights:
+                        explanation = f"""
+                **Rule {rule_id}** applied from _"{parent_sentence}"_: {rule_label}  
+                This rule splits the sentence into two branches:
+                - This branch contains: {", ".join(f'"{h}"' for h in highlight)}
+                - The other branch contains: {", ".join(f'"{s}"' for s in sibling_highlights)}
+                """
+                    else:
+                        explanation = f"""
+                **Rule {rule_id}** applied from _"{parent_sentence}"_: {rule_label}  
+                So from _"{parent_sentence}"_, we add: {", ".join(f'"{h}"' for h in highlight)}
+                """
                 else:
-                    st.markdown(f"**Rule {rule_id}**: {explanation}")
+                    explanation = f"**Rule {rule_id}**: {rule_label}"
+
+                st.markdown(explanation)
+
+
+
 
                 true_contradiction = row.get("True Contradiction")
                 false_contradiction = row.get("False Contradiction")
@@ -378,8 +416,8 @@ def display_node(node, depth=0):
                 st.warning(f"The sentences can be solved no further and there are no contradictions, so the branch is open")
 
     for child in node.children:
-        st.markdown(f"{indent}")
-        display_node(child, depth + 1)
+        display_node(child, depth + 1, parent=node)
+
 
 
 
