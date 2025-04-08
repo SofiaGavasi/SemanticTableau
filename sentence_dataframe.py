@@ -14,7 +14,7 @@ pos = {
     "Subject": [""],
     "Verb": [""],
     "Obj": [""],
-    "Verb modifier": [""],
+    "Variable": [""],
 }
 
 pos_df = pd.DataFrame(pos)
