@@ -51,10 +51,46 @@ def check_period(text,df_index, pos_df):
     
 def split_by_conjunctions(doc, df_index, pos_df):
     doc = [token for token in doc if token.text != ',']
+
+    sentence = ' '.join([token.text for token in doc])
+    if "all who " in sentence or "All who " in sentence:
+        
+        first_part = []
+        first_part.append("if")
+        first_part.append("one")
+        second_part = []
+        second_part.append("then")
+        second_part.append("one")
+        number = 0
+        for token in doc[2:]:        
+            if token.dep_ in {"VERB", "ROOT", "AUX"} or token.pos_ in {"VERB", "ROOT", "AUX"}:
+                verb = token.text
+                if token.text == "are":
+                    verb = "is"
+                elif token.text == "have":
+                    verb = "has"
+                number +=1
+                if number == 2:
+                    second_part.append(verb)
+                else:
+                    first_part.append(verb)
+            else:
+                if number == 2:
+                    second_part.append(token.text)
+                else:
+                    first_part.append(token.text)
+        result = ' '.join(first_part+second_part)
+        pos_df.loc[df_index, "Full sentence"] = result
+        doc = nlp(result)
+
+
     
     split_parts = []
     current_part = []
     remaining_text = [token.text for token in doc]
+    for i,word in enumerate(remaining_text):
+        if word == "one":
+            pos_df.loc[df_index, 'Variable'] += str(i)
     length_orig_text = len(remaining_text)
     length_curr_text = len(remaining_text)
     index = 0
@@ -200,7 +236,8 @@ def seperate_subjects(orTxt, df_index, pos_df):
     extra_stuff = ""
     before_stuff = ""
     conjunction = []
-    
+   
+
     for i, token in enumerate(orTxt):
         #print(f"Token: {token.text}, Type: {token.dep_}, Head: {token.head.text}")
         detected = False
@@ -395,8 +432,11 @@ def add_to_subject(token_index,doc,df_index, pos_df):
     exi.append("a")
     exi.append("an")
 
+    if doc[i].text == "one":
+        pos_df.loc[df_index, 'Variable'] = str(i)
+
     
-    if doc[i].text in universal_noun:
+    elif doc[i].text in universal_noun:
         if i > 0 and doc[i - 1].text == "not": #not everybody is happy
             pos_df.loc[df_index, 'Not operator'] += " "+str(i - 1) + " exi"
             pos_df.loc[df_index, 'Existential quantifier'] += " "+str(i) + " subj"
@@ -577,6 +617,19 @@ def adjust_verb_forms(text):
 
     return " ".join(corrected_words).strip()
 
+def replace_x(text):
+    doc = nlp(text)
+
+    tokens = []
+    for token in doc:
+        if token.text == "x" or token.text == "X":  
+            tokens.append("one")
+        else:
+            tokens.append(token.text)
+    
+    return " ".join(tokens)
+
+
 def replace_pronouns(sentence: str) -> str:
     
     doc = nlp(sentence)
@@ -585,10 +638,10 @@ def replace_pronouns(sentence: str) -> str:
     tokens = []
     
     for token in doc:
-        if token.pos_ == "PROPN":  # Store the last encountered proper noun
+        if token.pos_ == "PROPN": 
             proper_noun = token.text
         
-        if token.pos_ == "PRON" and proper_noun and token.text in {"he", "she"}:  # Replace pronoun with proper noun
+        if token.pos_ == "PRON" and proper_noun and token.text in {"he", "she"}:  
             tokens.append(proper_noun)
         else:
             tokens.append(token.text)
@@ -668,13 +721,14 @@ def add_all_to_plural_subject(text):
 
     return " ".join(new_tokens)
 
-
-def text_label(text):
+def text_label_complete(text):
+    
     pos_df = pd.DataFrame(pos)
     df_index = 0
 
     
     text = remove_hyphens(text)
+    text = replace_x(text)
     text = format_text(text)
     text = clean_adjectives_and_auxiliaries(text)
     text = adjust_verb_forms(text)
@@ -789,4 +843,134 @@ def text_label(text):
                         pos_df.fillna("", inplace=True)
                         
                         pos_df = analize_clause(split5, df_index, pos_df)
+    return pos_df
+
+
+
+def text_label(text):
+    pos_df = pd.DataFrame(pos)
+    df_index = 0
+    stop = False
+
+    
+    text = remove_hyphens(text)
+    text = replace_x(text)
+    text = format_text(text)
+    text = clean_adjectives_and_auxiliaries(text)
+    text = adjust_verb_forms(text)
+    text = replace_all_the(text)
+    text = replace_pronouns(text)
+    text = merge_compound_nouns(text)
+    text = add_all_to_plural_subject(text)
+
+
+    pos_df.loc[df_index, "Full sentence"] = text
+    pos_df.loc[df_index, "Height"] = 0
+    pos_df.loc[df_index, "Direct parent"] = -1
+    pos_df.fillna("", inplace=True)
+    
+
+    split_by_period, pos_df = check_period(text,df_index, pos_df)
+    if len(split_by_period)>1:
+        hold1 = df_index
+    else:
+        hold1 = -1
+
+    for split1 in split_by_period:  
+        
+        if len(split_by_period)>1:
+            stop = True
+            #print(split1)
+            df_index +=1  
+            pos_df.loc[df_index, "Direct parent"] = hold1
+        pos_df.loc[df_index, "Full sentence"] = split1
+        pos_df.loc[df_index, "Height"] = 1
+        pos_df.fillna("", inplace=True)
+        if not stop:
+            split_by_iff, pos_df = check_iff(split1, df_index, pos_df)
+
+            if len(split_by_iff) > 1:
+                hold2 = df_index
+            else:
+                hold2 = hold1
+
+            for split2 in split_by_iff:
+
+                split2 = nlp(split2)
+                if len(split_by_iff) > 1:  
+                    stop = True
+                    #print(split2)
+                    df_index +=1
+                    pos_df.loc[df_index, "Direct parent"] = hold2
+                pos_df.loc[df_index, "Full sentence"] = " ".join([token.text for token in split2])
+                pos_df.loc[df_index, "Height"] = 2
+                pos_df.fillna("", inplace=True)
+
+                if not stop:
+                    split_by_conj, pos_df = split_by_conjunctions(split2, df_index, pos_df)
+                    if  len(pos_df.loc[df_index, "Not operator"]) > 0:
+                        new_sentence = pos_df.loc[df_index, "Full sentence"]
+                        new_sentence = re.sub(r'\bNOT\b\s*', '', new_sentence)
+                        pos_df.loc[df_index, "Full sentence"] = new_sentence
+                        
+
+
+                    if len(split_by_conj) > 1:
+                            hold3 = df_index
+                    else:
+                        hold3 = hold2
+
+                    for split3 in split_by_conj: 
+
+                        split3 = eliminate_extra_spaces(split3)
+                        split3 = nlp(split3)
+                        if len(split_by_conj) > 1: 
+                            #print(split3)  
+                            stop = True 
+                            df_index +=1
+                            pos_df.loc[df_index, "Direct parent"] = hold3
+                        pos_df.loc[df_index, "Full sentence"] = " ".join([token.text for token in split3])
+                        pos_df.loc[df_index, "Height"] = 3
+                        pos_df.fillna("", inplace=True)
+                        if not stop:
+                            split_by_subject, pos_df = seperate_subjects(split3, df_index, pos_df)
+
+                            if len(split_by_subject) > 1:
+                                hold4 = df_index
+                            else:
+                                hold4 = hold3
+
+                            for split4 in split_by_subject:
+                                #print("4")
+                                
+                                split4 = eliminate_extra_spaces(split4)
+                                split4 = nlp(split4)
+                                if len(split_by_subject) > 1:
+                                    stop = True
+                                    #print(split4)
+                                    df_index +=1
+                                    pos_df.loc[df_index, "Direct parent"] = hold4
+                                pos_df.loc[df_index, "Full sentence"] = " ".join([token.text for token in split4])
+                                pos_df.loc[df_index, "Height"] = 4
+                                pos_df.fillna("", inplace=True)
+                                if not stop:
+                                    split_by_object, pos_df = seperate_objects(split4, df_index, pos_df)
+                                    
+                                    if len(split_by_object) > 1:
+                                        hold5 = df_index
+                                    else:
+                                        hold5 = hold4
+                                    if not stop:
+                                        for split5 in split_by_object:
+                                            split5 = eliminate_extra_spaces(split5)
+                                            split5 = nlp(split5)
+                                            if len(split_by_object) > 1:
+                                                #print(split5)
+                                                df_index +=1
+                                                pos_df.loc[df_index, "Direct parent"] = hold5
+                                            pos_df.loc[df_index, "Full sentence"] = " ".join([token.text for token in split5])
+                                            pos_df.loc[df_index, "Height"] = 5
+                                            pos_df.fillna("", inplace=True)
+                                            
+                                            pos_df = analize_clause(split5, df_index, pos_df)
     return pos_df

@@ -27,6 +27,8 @@ data2 = {
     "value": [""] * 26 
 }
 
+applied = []
+
 
 constants_df = pd.DataFrame(data1)
 
@@ -144,6 +146,23 @@ def solve_level_0(statements_df, index, current_parent, sign):
         child_node = TreeNode(df_child)
         current_parent.add_child(child_node)
 
+def universal_one(statements_df):
+    global applied
+    keys = variables_df.loc[variables_df['value'] != '', 'key'].tolist()
+    keys += constants_df.loc[constants_df['key'] != '', 'key'].tolist()
+    not_applied = [key for key in keys if key not in applied]
+
+    new_sentences = []
+    sentence = statements_df.loc[0, "Full sentence"]
+
+    for name in not_applied:
+        modified_sentence = re.sub(r"\bone\b", name, sentence, flags=re.IGNORECASE)
+        new_sentences.append(modified_sentence)
+    print(new_sentences)
+    return new_sentences
+        
+
+    
 
 
 def solve_level_2(statements_df, index, root, sign):
@@ -157,6 +176,33 @@ def solve_level_2(statements_df, index, root, sign):
     and_op = str(statements_df.loc[index, "And operator"])
     or_op = str(statements_df.loc[index, "Or operator"])
     updated = False
+    
+    if str(statements_df.loc[index, "Variable"]) != "":
+        new_sentences = universal_one(statements_df)
+        new_sentences.append(parent_sentence)
+        if sign < 0:
+            df_node = pd.DataFrame({
+                'True Statements': [""],
+                'False Statements': [new_sentences],
+                'End': [False],
+                'Contradiction': [False],
+                'Rule': [16],
+                'Highlight': [new_sentences],
+                'Parent': [parent_sentence]
+            })  
+        else:
+            df_node = pd.DataFrame({
+                'True Statements': [new_sentences],
+                'False Statements': [""],
+                'End': [False],
+                'Contradiction': [False],
+                'Rule': [16],
+                'Highlight': [new_sentences],
+                'Parent': [parent_sentence]
+            })  
+        child_node = TreeNode(df_node)
+        root.add_child(child_node) 
+        return
 
     if len(children)>2:
         #case: 01 and, 01 if-then (if Brian is heavy and Brian is a fish then Brian is happy)
@@ -450,7 +496,7 @@ def solve_level_2(statements_df, index, root, sign):
                 })  
                 child_node = TreeNode(df_node)
                 root.add_child(child_node) 
-                
+    
 
 
 def solve_level_3(statements_df, index, root, sign):
@@ -470,9 +516,15 @@ def solve_level_3(statements_df, index, root, sign):
             children_without_0 += statements_df.loc[child, "Full sentence"]
             string = str(i)+str(i+1)
             if string in and_op:
-                children_without_0+= " and "
+                if sign > 0:
+                    children_without_0+= ". "
+                else:
+                    children_without_0+= " and "
             elif string in or_op:
-                children_without_0+= " or "
+                if sign < 0:
+                    children_without_0+= ". "
+                else:
+                    children_without_0+= " or "
             
 
     if "01" in and_op:
@@ -573,6 +625,7 @@ def get_leaves(node):
     leaves = []
     for child in node.children:
         leaves.extend(get_leaves(child))
+   
     return leaves
 
 def get_item(sentence_df, what):
@@ -652,9 +705,9 @@ def create_variable(sentence_df, sign, existential, quantifier, negate):
                         if verb_lemma == "be":
                             new_sentences = first_empty_key + " is " + subjects[0]+" and "+first_empty_key + " is " + subjects[1] + " and " + first_empty_key + " is " + obj
                         elif obj != "":
-                            new_sentences = first_empty_key + " is " + subjects[0]+" and "+first_empty_key + " is " + subjects[1] +  + " and " + first_empty_key + " "+ verb+ " "+ obj
+                            new_sentences = first_empty_key + " is " + subjects[0]+" and "+first_empty_key + " is " + subjects[1] +   " and " + first_empty_key + " "+ verb+ " "+ obj
                         else:
-                            new_sentences = first_empty_key + " is " + subjects[0]+" and "+first_empty_key + " is " + subjects[1] +  + " and " + first_empty_key + " "+ verb
+                            new_sentences = first_empty_key + " is " + subjects[0]+" and "+first_empty_key + " is " + subjects[1] +  " and " + first_empty_key + " "+ verb
 
                     else:
                         if verb_lemma == "be":
@@ -1032,19 +1085,19 @@ def add_all_variables(sentence_df, existential):
                 if adjective: # some heavy fish are gray
 
                     if verb_lemma == "be":
-                        new_sentence = f"{key} is {subjects[0]} and {key} is {subjects[1]} and {key} is {last_part}" # Some tall humans are mortal
+                        new_sentence = f"{key} is {subjects[0]} and {key} is {subjects[1]}. {key} is {last_part}" # Some tall humans are mortal
                     elif obj != "":
-                        new_sentence = f"{key} is {subjects[0]} and {key} is {subjects[1]} and {key} {verb} {last_part}" #Some tall humans hate ...
+                        new_sentence = f"{key} is {subjects[0]} and {key} is {subjects[1]}. {key} {verb} {last_part}" #Some tall humans hate ...
                     else: 
-                        new_sentence = f"{key} is {subjects[0]} and {key} is {subjects[1]} and {key} {verb}" #Some tall human eat
+                        new_sentence = f"{key} is {subjects[0]} and {key} is {subjects[1]}. {key} {verb}" #Some tall human eat
 
                 else:
                     if verb_lemma == "be":
-                        new_sentence = f"{key} is {subject} and {key} is {last_part}" # Some humans are mortal
+                        new_sentence = f"{key} is {subject}. {key} is {last_part}" # Some humans are mortal
                     elif obj != "":
-                        new_sentence = f"{key} is {subject}  and {key} {verb} {last_part}" #Some humans hate ...
+                        new_sentence = f"{key} is {subject}. {key} {verb} {last_part}" #Some humans hate ...
                     else: 
-                        new_sentence = f"{key} is {subject} and {key} {verb}" #Some human eat
+                        new_sentence = f"{key} is {subject}. {key} {verb}" #Some human eat
             else:
                 if adjective: # all heavy fish are gray
                     if verb_lemma == "be":
@@ -1073,9 +1126,9 @@ def add_all_variables(sentence_df, existential):
             elif existential:            
                 
                 if verb_lemma == "be":
-                    new_sentence = f"{key} is {obj} and {subject} is {obj}" # Mary is some human
+                    new_sentence = f"{key} is {obj}. {subject} is {key}" # Mary is some human
                 elif obj != "":
-                    new_sentence = f"{key} is {obj} and {subject} {verb} {obj}" # Mary hates some humans
+                    new_sentence = f"{key} is {obj}. {subject} {verb} {key}" # Mary hates some humans
                 
             else:
                 if verb_lemma == "be":
@@ -1176,9 +1229,25 @@ def solve_tree(root):
     
     iteration_count = 0
     final_operation = False
+
+    new_constants = False
+
+    global applied
+    keys = variables_df.loc[variables_df['value'] != '', 'key'].tolist()
+    keys += constants_df.loc[constants_df['key'] != '', 'key'].tolist()
+    not_applied = [key for key in keys if key not in applied]
+    if len(not_applied)>0:
+        new_constants = True
+    print(not_applied)
+    print(applied)
+    print(keys)
+
     while True: 
 
         leaves = get_leaves(root)
+        leaves.sort(key=lambda leaf: leaf.node_id, reverse=True)
+        print([leaf.node_id for leaf in leaves])
+
 
         if all(leaf.value["Contradiction"].iloc[0] for leaf in leaves):
             return True
@@ -1186,9 +1255,23 @@ def solve_tree(root):
         if all(leaf.value["End"].iloc[0] for leaf in leaves):
             break  
         
+        for leaf in leaves:
+            if leaf.value["End"].iloc[0] and leaf.value["Contradiction"].iloc[0] == False and not final_operation:
+                boolean, tp, fp = find_contradictions(leaf)
+                leaf.value.at[0, "Contradiction"] = boolean
+                if boolean:
+                    leaf.value.at[0, "True Contradiction"] = tp
+                    leaf.value.at[0, "False Contradiction"] = fp
+                if not boolean:
+                    print(f"Open branch found at node_id: {leaf.node_id}")
+                    return False
+                    
+
+
         
         for leaf in leaves:
             leaf.clean_dataframe()
+            #print(leaf.value)
             
             updated = False
             one_side_done = False
@@ -1211,7 +1294,9 @@ def solve_tree(root):
                         for item in true_part:
                             if not stop:
                                 sentence_df = text_label(item)
-
+                                if sentence_df.loc[0, "Height"] == 2 and sentence_df.loc[0, "Variable"] != "":
+                                    if not new_constants:
+                                        continue
                                 if sentence_df.loc[0, "Height"] == 5 and sentence_df.loc[0, "Not operator"] == "" and sentence_df.loc[0, "Existential quantifier"] == "":
 
                                     if sentence_df.loc[0, "Universal quantifier"] != "":
@@ -1230,11 +1315,18 @@ def solve_tree(root):
                         if updated == False:
                             one_side_done = True
                             if len(false_part)<1:
-                                leaf.value.loc[0, "End"] = True 
+                                leaf.value.loc[0, "End"] = True
+                                leaf.value.loc[0, "Contradiction"] = False
+                                print("open branch no false_part")
+                                return False
 
                     elif isinstance(true_part, str): #if it's a string, no need to iterate
 
                         sentence_df = text_label(true_part)
+                        if sentence_df.loc[0, "Height"] == 2 and sentence_df.loc[0, "Variable"] != "":
+                                    if not new_constants:
+                                        continue
+                                    
                         if sentence_df.loc[0, "Height"] == 5 and sentence_df.loc[0, "Not operator"] == "" and sentence_df.loc[0, "Existential quantifier"] == "":
                             if sentence_df.loc[0, "Universal quantifier"] != "":
                                     final_operation = True
@@ -1242,7 +1334,10 @@ def solve_tree(root):
                             one_side_done = True
                             past_true.append(true_part)
                             if len(false_part)<1:
-                                leaf.value.loc[0, "End"] = True 
+                                leaf.value.loc[0, "End"] = True
+                                leaf.value.loc[0, "Contradiction"] = False
+                                print("open branch no false_part")
+                                return False
                         else:                            
                             solve_sentence(true_part, leaf, sign)
                             updated = True
@@ -1254,6 +1349,9 @@ def solve_tree(root):
                         for item in false_part:
                             if not stop and not updated: 
                                 sentence_df = text_label(item)
+                                if sentence_df.loc[0, "Height"] == 2 and sentence_df.loc[0, "Variable"] != "":
+                                    if not new_constants:
+                                        continue
                                 if sentence_df.loc[0, "Height"] == 5 and sentence_df.loc[0, "Not operator"] == "" and sentence_df.loc[0, "Universal quantifier"] == "" :
                                     if sentence_df.loc[0, "Existential quantifier"] != "":
                                             final_operation = True
@@ -1271,6 +1369,9 @@ def solve_tree(root):
                         
                         if not updated:
                             sentence_df = text_label(false_part)
+                            if sentence_df.loc[0, "Height"] == 2 and sentence_df.loc[0, "Variable"] != "":
+                                    if not new_constants:
+                                        continue
                             if sentence_df.loc[0, "Height"] == 5 and sentence_df.loc[0, "Not operator"] == "" and sentence_df.loc[0, "Universal quantifier"] == "":
                                 if sentence_df.loc[0, "Existential quantifier"] != "":
                                             final_operation = True
@@ -1283,7 +1384,14 @@ def solve_tree(root):
                             past_false.append(false_part)
                 
                 if updated:
-                   for child in leaf.children:
+
+                    keys = variables_df.loc[variables_df['value'] != '', 'key'].tolist()
+                    keys += constants_df.loc[constants_df['key'] != '', 'key'].tolist()
+                    not_applied = [key for key in keys if key not in applied]
+                    if len(not_applied)>0:
+                        new_constants = True
+
+                    for child in leaf.children:
                         
                         
                         true_statements = child.value.loc[0, "True Statements"]
@@ -1323,24 +1431,27 @@ def solve_tree(root):
                             child.value.at[0, "True Contradiction"] = tp
                             child.value.at[0, "False Contradiction"] = fp
                         child.clean_dataframe()
-                
+                        
                 
         iteration_count += 1
         
         # iteration limit 
-        if iteration_count >= 100:
-            print(f"Iteration limit of {100} reached.")
+        if iteration_count >= 1000:
+            print(f"Iteration limit of {1000} reached.")
             return False
     
     #HERE I NEED TO CHECK FOR FINAL EXISTENTIAL AND UNIVERSAL
 
     if final_operation:
-        solve_final_exi_uni(root)
+       solve_final_exi_uni(root)
+    
 
     leaves = get_leaves(root)
     all_contradictions = True
     for leaf in leaves:
-        if leaf.value["End"].iloc[0]:
+        if not leaf.value["End"].iloc[0]:
+            all_contradictions = False
+        elif leaf.value["End"].iloc[0] and not leaf.value["Contradiction"].iloc[0]:
             boolean, tp, fp = find_contradictions(leaf)
             leaf.value.at[0, "Contradiction"] = boolean
             if boolean:
@@ -1348,6 +1459,7 @@ def solve_tree(root):
                 leaf.value.at[0, "False Contradiction"] = fp
             if not boolean:
                 all_contradictions = False
+        
     return all_contradictions
 
 
@@ -1390,6 +1502,9 @@ def make_tree(sentence, sign): #TODO check if right
         "value": [""] * 26 
     }
 
+    global applied
+    applied = []
+
     global constants_df
     constants_df = pd.DataFrame(data1)
     global variables_df
@@ -1429,6 +1544,7 @@ def make_tree(sentence, sign): #TODO check if right
 
 def make_tree_inference(statements, conclusions):
 
+
     data1 = {
         "key": [],
         "value": []
@@ -1444,6 +1560,9 @@ def make_tree_inference(statements, conclusions):
         ],
         "value": [""] * 26 
     }
+
+    global applied
+    applied = []
 
     global constants_df
     constants_df = pd.DataFrame(data1)
@@ -1488,6 +1607,9 @@ def make_tree_inference_defe(statements, conclusions, extra_statement):
         ],
         "value": [""] * 26 
     }
+
+    global applied
+    applied = []
 
     global constants_df
     constants_df = pd.DataFrame(data1)
