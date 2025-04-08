@@ -206,6 +206,8 @@ This solver understands **simple, well-formed English sentences** — but keep i
 - `Nobody eats.`
 - `I don't love anyone.`
 - `Everyone hates everyone.`
+- `All who (verb + object) (verb + object)` -> example: All who play tennis are happy
+- `If one (verb + object), then one (verb + object)` -> use this structure for a rule that applies to everyone, example: If one plays tennis, then one is happy
 
 ---
 
@@ -217,7 +219,7 @@ This solver understands **simple, well-formed English sentences** — but keep i
   - ❌ `The cat jump.` ← (incorrect verb conjugation)
 
 - Proper nouns must be **capitalized** (`Alice`, `Bob`, `Mary`).
-- **Compound names** like `The tall man` or `A happy student` are fine.
+- **Compound names** like `The tall man` or `The happy student` are fine.
 - **Unrecognized names** may cause errors — stick with simple names or those used in examples.
 
          
