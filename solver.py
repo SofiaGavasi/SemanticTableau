@@ -151,14 +151,15 @@ def universal_one(statements_df):
     keys = variables_df.loc[variables_df['value'] != '', 'key'].tolist()
     keys += constants_df.loc[constants_df['key'] != '', 'key'].tolist()
     not_applied = [key for key in keys if key not in applied]
-
+    #print(not_applied)
     new_sentences = []
     sentence = statements_df.loc[0, "Full sentence"]
 
     for name in not_applied:
         modified_sentence = re.sub(r"\bone\b", name, sentence, flags=re.IGNORECASE)
         new_sentences.append(modified_sentence)
-    print(new_sentences)
+        applied.append(name)
+    
     return new_sentences
         
 
@@ -1296,7 +1297,10 @@ def solve_tree(root):
                                 sentence_df = text_label(item)
                                 if sentence_df.loc[0, "Height"] == 2 and sentence_df.loc[0, "Variable"] != "":
                                     if not new_constants:
+                                        past_true.append(item)
                                         continue
+                                    else:
+                                        new_constants = False
                                 if sentence_df.loc[0, "Height"] == 5 and sentence_df.loc[0, "Not operator"] == "" and sentence_df.loc[0, "Existential quantifier"] == "":
 
                                     if sentence_df.loc[0, "Universal quantifier"] != "":
@@ -1325,7 +1329,10 @@ def solve_tree(root):
                         sentence_df = text_label(true_part)
                         if sentence_df.loc[0, "Height"] == 2 and sentence_df.loc[0, "Variable"] != "":
                                     if not new_constants:
+                                        past_true.append(item)
                                         continue
+                                    else:
+                                        new_constants = False
                                     
                         if sentence_df.loc[0, "Height"] == 5 and sentence_df.loc[0, "Not operator"] == "" and sentence_df.loc[0, "Existential quantifier"] == "":
                             if sentence_df.loc[0, "Universal quantifier"] != "":
@@ -1351,7 +1358,10 @@ def solve_tree(root):
                                 sentence_df = text_label(item)
                                 if sentence_df.loc[0, "Height"] == 2 and sentence_df.loc[0, "Variable"] != "":
                                     if not new_constants:
+                                        past_true.append(item)
                                         continue
+                                    else:
+                                        new_constants = False
                                 if sentence_df.loc[0, "Height"] == 5 and sentence_df.loc[0, "Not operator"] == "" and sentence_df.loc[0, "Universal quantifier"] == "" :
                                     if sentence_df.loc[0, "Existential quantifier"] != "":
                                             final_operation = True
@@ -1371,7 +1381,10 @@ def solve_tree(root):
                             sentence_df = text_label(false_part)
                             if sentence_df.loc[0, "Height"] == 2 and sentence_df.loc[0, "Variable"] != "":
                                     if not new_constants:
+                                        past_true.append(item)
                                         continue
+                                    else:
+                                        new_constants = False
                             if sentence_df.loc[0, "Height"] == 5 and sentence_df.loc[0, "Not operator"] == "" and sentence_df.loc[0, "Universal quantifier"] == "":
                                 if sentence_df.loc[0, "Existential quantifier"] != "":
                                             final_operation = True
