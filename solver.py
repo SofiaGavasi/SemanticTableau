@@ -1736,13 +1736,16 @@ def solve_tree(root):
                         boolean,tp,fp = find_contradictions(child)
                         child.value.at[0, "Contradiction"] = boolean
                         child.value.at[0, "End"] = boolean
+                        child.clean_dataframe()
                         if boolean:
                             current_leaves = get_leaves(root)
                             child.value.at[0, "True Contradiction"] = tp
                             child.value.at[0, "False Contradiction"] = fp
+                            
                             if all(leaf.value["Contradiction"].iloc[0] for leaf in current_leaves):
+
                                 return True
-                        child.clean_dataframe()
+                        
         if universal_no_constants and not final_operation and not updated:
             print("Initiating new constant")
             first_empty_key = variables_df.loc[variables_df['value'] == '', 'key'].iloc[0]
@@ -1770,9 +1773,11 @@ def solve_tree(root):
     leaves = get_leaves(root)
     all_contradictions = True
     for leaf in leaves:
+        
         if not leaf.value["End"].iloc[0]:
             all_contradictions = False
         elif leaf.value["End"].iloc[0] and not leaf.value["Contradiction"].iloc[0]:
+            
             boolean, tp, fp = find_contradictions(leaf)
             leaf.value.at[0, "Contradiction"] = boolean
             if boolean:

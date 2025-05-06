@@ -6,42 +6,44 @@ import pandas as pd
 rule_explanations = {
     -1: "Initialization: Just placing the sentence into the node.",
     0: "Initialization: Just placing the sentence into the node.",
-    1: "AND on the left (positive): Break 'A and B' into A and B.",
-    2: "AND on the right (negative): Create two branches, one with ¬A and one with ¬B.",
-    3: "OR on the left (positive): Create two branches, one with A and one with B.",
-    4: "OR on the right (negative): Break '¬(A or B)' into ¬A and ¬B.",
-    5: "Implication (→) on the left (positive): Break 'A → B' into ¬A or B (branch).",
-    6: "Implication (→) on the right (negative): Break '¬(A → B)' into A and ¬B.",
-    7: "Biconditional (↔) on the left: Break into A → B and B → A.",
-    8: "Biconditional (↔) on the right: Branch into 'A and ¬B' and '¬A and B'.",
-    9: "Universal quantifier on the left: Apply ∀x.P(x) to each relevant instance.",
-    10: "Universal quantifier on the right: Use counterexample ¬P(a).",
-    11: "Existential quantifier on the left: Use a new instance P(a).",
-    12: "Existential quantifier on the right: Must hold for all, show ¬P(x).",
-    13: "Negation of a true statement -> The statement is false, place it in the false statements.",
-    14: "Negation of a false statement -> The statement is true, place it in the true statements.",
+    1: "AND on the left (positive): Break 'A and B' into A and B. Both statements are true at the same time. We simply split the sentence in 2 parts.",
+    2: "AND on the right (negative): Create two branches, one with ¬A and one with ¬B. There are 2 possible cases: either the first part of the statement is false, and/or the second part of the statement is false. We explore both options.",
+    3: "OR on the left (positive): Create two branches, one with A and one with B. There are 2 possible cases: either the first part of the statement is true, and/or the second part of the statement is true. We explore both options.",
+    4: "OR on the right (negative): Break '¬(A or B)' into ¬A and ¬B. Both statements are false at the same time. We simply split the sentence in 2 parts",
+    5: "Implication (→) on the left (positive): Break 'A → B' into ¬A or B (branch). An implication is true if either the first part of it is false, or if the second part of it is true. We explore both of these alternatives.",
+    6: "Implication (→) on the right (negative): Break '¬(A → B)' into A and ¬B. An implication is false only when the first part of it is true, and the second part of it is false.",
+    7: "Biconditional (↔) on the left: A↔B is split and we break into A → B and B → A.",
+    8: "Biconditional (↔) on the right: Branch into 'A and ¬B' and '¬A and B'. This is like 2 negated conditionals, A → B and B → A.",
+    9: "Universal quantifier on the left: Apply ∀x.P(x) to each relevant instance. This universal rules needs to be applied to all 'constants' (names).",
+    10: "Universal quantifier on the right: Use counterexample ¬P(a). Since this universal statement is negated, we introduce a counterexample for it.",
+    11: "Existential quantifier on the left: Use a new instance P(a). Since we are stating that something exists, we introduce an example of it.",
+    12: "Existential quantifier on the right: Must hold for all, show ¬P(x). Since we are negating an existential statement, e.g. 'It is not the case that something exists', we need to prove that it is the case for all constants (names). ",
+    13: "Negation of a true statement -> The statement is false, so we remove the negation and place it in the false statements.",
+    14: "Negation of a false statement -> The statement is true, so we remove the negation and place it in the true statements.",
     16: "Expansion of a universal statement"
 }
 
 examples = {
     "Custom": ([], ""),
-    "Example 1 - Simple Negation": (["I am not sad"], ""),
-    "Example 2 - Modus Tollens": (["If it is raining then the ground is wet", "The ground is not wet"], "It is not raining."),
-    "Example 3 - Modus Ponens": (["If Alice sings then Bob smiles", "Alice sings"], "Bob smiles."),
-    "Example 4 - Hypothetical Syllogism": (["If I eat then I am full", "If I am full then I sleep", "I eat"], "I sleep."),
-    "Example 5 - Disjunctive Syllogism": (["Either the lamp is on or the window is open", "The lamp is not on"], "The window is open."),
-    "Example 6 - Conjunction Simplification": (["The cat is golden and the cat is happy"], "The cat is golden."),
-    "Example 7 - Negation of a Conjunction": (["It is not the case that the door is open and the window is shut"], ""),
-    "Example 8 - Universal Quantifier": (["All singers are happy", "Alice is a singer"], "Alice is happy."),
-    "Example 9 - Existential Quantifier": (["Some students are smart"], ""),
-    "Example 10 - Negated Universal (¬∀ → ∃¬)": (["It is not the case that all teachers are kind"], ""),
-    "Example 11 - Biconditional": (["The moon is full if and only if the sky is clear", "The moon is full"], "The sky is clear."),
-    "Example 12 - Contradiction Check": (["All dogs are animals", "No animals are pets", "All dogs are pets"], ""),
-    "Example 13 - Double Negation": (["It is not the case that it is not raining"], "It is raining.")
+    "Example 1 - Valid Double Negation": (["It is not the case that I am not sad"], "I am sad"),
+    "Example 2 - Valid Modus Tollens": (["If it is raining then the ground is wet", "The ground is not wet"], "It is not raining."),
+    "Example 3 - Valid Modus Ponens": (["If Mary sings then Carl smiles", "Mary sings"], "Carl smiles."),
+    "Example 4 - Valid Hypothetical Syllogism": (["If I eat then I am full", "If I am full then I sleep", "I eat"], "I sleep."),
+    "Example 5 - Valid Disjunctive Syllogism": (["Either the lamp is on or the window is open", "The lamp is not on"], "The window is open."),
+    "Example 6 - Valid Conjunction Simplification": (["The sky is bright and the cat is happy"], "The cat is happy."),
+    "Example 7 - Valid Universal Quantifier": (["All singers are happy", "Mary is a singer"], "Mary is happy."),
+    "Example 8 - Valid Existential Quantifier": (["Some students are smart"], "It is not the case that all students are not smart"),
+    "Example 9 - Invalid Negated Universal": (["It is not the case that all books are interesting"], ""),
+    "Example 10 - Invalid Biconditional": (["The moon is full if and only if the sky is clear", "The moon is full"], "The sky is clear."),
+    "Example 11 - Invalid Negation of a Conjunction": (["It is not the case that the door is open and the window is shut"], ""),
+    "Example 12 - Valid Universal with Exception": (["All birds except for penguins fly", "Jasper is a penguin", "All penguins are birds"], "Jasper does not fly."),
+    "Example 13 - Invalid Universal with Exception": (["All birds except for penguins fly", "Jasper is a penguin", "All penguins are birds"], "Jasper flies."),
+    "Example 14 - Pinocchio's logic puzzle": (["It is not the case that all hats are green"], "there is a hat"),
+    "Example 15 - Pinocchio's logic puzzle": (["It is not the case that all hats are green"], "there is not a hat")
 }
 
-st.set_page_config(page_title="Semantic Tableau Solver", layout="wide")
-st.title("Semantic Tableau Visualizer")
+st.set_page_config(page_title="Reasoning with Natural Language", layout="wide")
+st.title("Reasoning with Natural Language")
 
 st.markdown("<br><br>", unsafe_allow_html=True)
 
@@ -101,7 +103,7 @@ Instead of picking one, you explore both options separately, like a fork in the 
 
 For example:
 
-If we know that "Either Alice is dancing or Bob is singing", but we don’t know which one is true — it could be Alice, Bob, or both — so we branch into:
+If we know that "Either Alice is dancing or Bob is singing", but we don't know which one is true — it could be Alice, Bob, or both — so we branch into:
 
 - One path where we assume Alice is dancing is true.
 - Another path where we assume Bob is singing is true.
@@ -116,7 +118,7 @@ st.markdown("<br><br>", unsafe_allow_html=True)
 st.markdown("""
             
 
-### Welcome to the Semantic Tableau Visualizer
+### Welcome to the Reasoning with Natural Language
 
 Enter a logical sentence and an optional conclusion. The app will automatically build a **semantic tableau** (logic tree) that breaks down the reasoning process step by step, applying formal logic rules to determine whether the conclusion follows.
 
@@ -174,7 +176,7 @@ This solver understands **simple, well-formed English sentences** — but keep i
 
 #### ✅ **Basic Statements**:
 - `The cat jumps.`
-- `Alice sings.`
+- `Someone sings.`
 - `I am happy.`
 
 #### ✅ **Negations**:
@@ -187,19 +189,19 @@ This solver understands **simple, well-formed English sentences** — but keep i
 - `Luisa and Socrates are happy.`
 
 #### ✅ **Disjunctions (OR)**:
-- `Either Alice sings or Bob dances.`
+- `Either Mary sings or Lisa dances.`
 - `I eat or I drink.`
 - `Mary doesn't eat fish or meat.`
 
 #### ✅ **Conditionals (IF...THEN)**:
-- `If the cat sings, then Bob smiles.`
-- `If nobody sings, then Alice cries.`
+- `If the cat sings, then Mary smiles.`
+- `If nobody sings, then Mary cries.`
 
 #### ✅ **Biconditionals (IF AND ONLY IF)**:
-- `Alice dances if and only if Bob sings.`
+- `Carla dances if and only if Bob sings.`
 
 #### ✅ **Causal-like language** *(mapped to logic)*:
-- `Bob jumps because the bell rings.`
+- `Eleonora jumps because the bell rings.`
 
 #### ✅ **Quantifiers**:
 - `All students read.`
@@ -217,8 +219,7 @@ This solver understands **simple, well-formed English sentences** — but keep i
   - ✅ `The cat jumps.`
   - ❌ `The cat jump.` ← (incorrect verb conjugation)
 
-- Proper nouns must be **capitalized** (`Alice`, `Bob`, `Mary`).
-- **Compound names** like `The tall man` or `A happy student` are fine.
+- Proper nouns must be **capitalized** (`Jake`, `Bob`, `Mary`).
 - **Unrecognized names** may cause errors — stick with simple names or those used in examples.
 
          
@@ -376,18 +377,23 @@ def display_node(node, depth=0, parent=None):
 
 
                 if pd.notna(parent_sentence):
-                    if rule_id in branching_rules and sibling_highlights:
-                        explanation = f"""
-                **Rule {rule_id}** applied from _"{parent_sentence}"_: {rule_label}  
-                This rule splits the sentence into two branches:
-                - This branch contains: {", ".join(f'"{h}"' for h in highlight)}
-                - The other branch contains: {", ".join(f'"{s}"' for s in sibling_highlights)}
-                """
+                    if rule_id in branching_rules and sibling_highlights:                           
+                        
+                            explanation = f"""
+                            **Rule {rule_id}** applied from _"{parent_sentence}"_: {rule_label}  
+                            This rule splits the sentence into two branches:
+                            - This branch contains: {", ".join(f'"{h}"' for h in highlight)}
+                            - The other branch contains: {", ".join(f'"{s}"' for s in sibling_highlights)}
+                            """
                     else:
-                        explanation = f"""
-                **Rule {rule_id}** applied from _"{parent_sentence}"_: {rule_label}  
-                So from _"{parent_sentence}"_, we add: {", ".join(f'"{h}"' for h in highlight)}
-                """
+                        if rule_id in {-1, 0}:
+                            explanation = f"""
+                            **Rule {rule_id}** applied: {rule_label}   """
+                        else:
+                            explanation = f"""
+                            **Rule {rule_id}** applied from _"{parent_sentence}"_: {rule_label}  
+                            So from _"{parent_sentence}"_, we add: {", ".join(f'"{h}"' for h in highlight)}
+                            """
                 else:
                     explanation = f"**Rule {rule_id}**: {rule_label}"
 
@@ -560,4 +566,4 @@ if st.session_state.get("tree_root"):
     elif option == "Add exceptions to previous universal premises":
         handle_exception_rewrite()
 else:
-    st.info("Run the solver above first before using defeasibility tools.")
+    st.info("Run the solver above first before using extra tools.")
