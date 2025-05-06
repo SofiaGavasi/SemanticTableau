@@ -128,8 +128,9 @@ Enter a logical sentence and an optional conclusion. The app will automatically 
 - Choose an example from the dropdown, or select "Custom" and type your own sentence and conclusion.
 - You can leave the checkbox **"Show full DataFrame for each node"** unchecked, unless you want more details on what is going on behind the scenes
 - Click **"Run Semantic Tableau Solver"** to generate the logic tree.
-- Whenever you have an inteded line that means the node is a child of the previous indentation level, you can also see this by the depth level specified
+- Whenever you have an indented line that means the node is a child of the previous indentation level, you can also see this by the depth level specified
 - Expand each node to see how rules were applied and which statements are considered true or false at each step.
+- All of this will make more sense when you see what you are working with, don't panic! :)
 
 ---
 
