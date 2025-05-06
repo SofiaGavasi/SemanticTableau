@@ -456,7 +456,7 @@ def display_node(node, depth=0, parent=None):
 if st.button("Run Semantic Tableau Solver"):
     
     with st.spinner("Processing..."):
-       # try:
+        try:
             TreeNode.reset_tree()
             root, all_contradictions = make_tree_inference(input_text, conclusion)
             st.session_state.tree_root = root
@@ -471,8 +471,8 @@ if st.button("Run Semantic Tableau Solver"):
                 st.success("All branches have been closed. This means the initial statement logically leads to a contradiction in every case — the inference is **logically valid**.")
             else:
                 st.warning("Some branches remain open. This means there is at least one interpretation where the statements hold without contradiction — the inference is **not necessarily valid**.")
-        #except Exception as e:
-         #   st.error(" Oops! Something went wrong while processing your sentence. Please check your input for typos or unsupported sentence structures.")
+        except Exception as e:
+           st.error(" Oops! Something went wrong while processing your sentence. Please check your input for typos or unsupported sentence structures.")
 
 
 
