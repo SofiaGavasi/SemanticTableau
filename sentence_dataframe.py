@@ -15,6 +15,7 @@ pos = {
     "Verb": [""],
     "Obj": [""],
     "Variable": [""],
+    "Unless": [""]
 }
 
 pos_df = pd.DataFrame(pos)

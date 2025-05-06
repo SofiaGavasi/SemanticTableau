@@ -2,7 +2,8 @@ from tree import TreeNode
 import pandas as pd
 import spacy
 nlp = spacy.load("en_core_web_sm")
-
+from rich.console import Console
+from rich.table import Table
 
 from text_processing import text_label
 
@@ -22,7 +23,7 @@ def compare(true_st, false_st):
 
     subject_1_index = s1_df.loc[0, "Subject"]
     subject_2_index = s2_df.loc[0, "Subject"]
-    if subject_1_index != None and subject_2_index != None :
+    if len(subject_1_index) !=0 and len(subject_2_index) != 0 :
         for i in subject_1_index:
             subject_1 = words_1[int(i)] + " "
         for i in subject_2_index:
@@ -31,6 +32,8 @@ def compare(true_st, false_st):
         if subject_1.lower() != subject_2.lower(): #need to check this 
             return False
     else:
+        print(true_st)
+        print(false_st)
         print("MISSING SUBJECT")
         return False
     
@@ -148,6 +151,7 @@ def find_contradictions(leaf):
                 return True, true_statement, false_statement
             
             if s1_df.loc[0, "Height"] == 5 and s2_df.loc[0, "Height"] == 5 and s1_df.loc[0, "Universal quantifier"] == "" and s2_df.loc[0, "Universal quantifier"] == "" and s1_df.loc[0, "Existential quantifier"] == "" and s2_df.loc[0, "Existential quantifier"] == ""   :
+
                 contradiction = compare(true_statement, false_statement)
                 if contradiction:
                     return True, true_statement, false_statement

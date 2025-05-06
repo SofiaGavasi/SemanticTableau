@@ -6,15 +6,19 @@ from sentence_dataframe import pos
 from textblob import TextBlob
 
 
-universal = ["all", "every", "each"]
-existential = ["some", "no"]
+universal = ["all", "every", "each", "no"]
+existential = ["some"]
 global token
 
 
 def check_iff(text, df_index, pos_df):
     expressions = ["if and only if", "precisely when", "just in case", "exactly when", "when and only when", "if, but only if"]
     negatives = ["it is not the case that", "it is not true that"]
-    
+    doc = nlp(text)
+    for i, tok in enumerate(doc):
+        if tok.text == "one":
+            pos_df.loc[df_index, 'Variable'] += str(i)
+
     for neg in negatives:
         if neg in text:
             text = text.replace(neg, "NOT")
@@ -47,50 +51,114 @@ def check_period(text,df_index, pos_df):
         pos_df.loc[df_index, "And operator"] = str(len(sentences)-1)
     return sentences, pos_df
 
+def normalize_universal_sentence(doc, df_index, pos_df):
+
+    sentence = ' '.join([token.text for token in doc])
+    lower_sentence = sentence.lower()
+
+    pattern2 = re.match(r"(all|no|nobody|everyone|everybody)\s+(who|that)\s+(.*)", lower_sentence)
+    pattern1 = re.match(r"(all|no|nobody|everyone|everybody)\s+(.*?)\s+(who|that)\s+(.*)", lower_sentence)
+    
+    #pattern3 = re.search(r"(except for|apart from)\s+(.*)", lower_sentence)
+    
+
+    if pattern1:
+        quantifier = pattern1.group(1)  # all / no / nobody
+        subject = pattern1.group(2)     # animals / people / etc.
+        relative_clause = pattern1.group(4)  # do this / do not do this / etc.
+        if subject.endswith("s"):
+            subject = subject[:-1]
+
+    elif pattern2:
+        quantifier = pattern2.group(1)  # all / no / nobody
+ 
+        relative_clause = pattern2.group(3)  # do this / do not do this / etc.
+
+  
+    else: return ""
+    double_negation = False
+
+    
+    first_part = ["if", "one"]
+    second_part = ["then", "one"]
+    negation = False
+    if quantifier in {"no", "nobody"}:
+        negation = True
+    done = False
+    index = 2
+    if pattern1:
+        index = 3  
+        first_part.append("is " + subject +" and one")
+    number = 0
+    verb = ""
+    for token in doc[index:]:
+
+        
+        if quantifier in {"no", "nobody"} and token.text == "not" and number ==2 and len(second_part) > 2:
+            second_part = second_part[:-1]  
+        elif done:
+            second_part.append(token.text)   
+        elif (token.dep_ in {"VERB", "ROOT", "aux"} or token.pos_ in {"VERB", "ROOT", "AUX"}) and verb not in {"do", "does"}:
+
+            verb = token.text
+            if token.text in {"is", "are"}:
+                verb = "is"
+            elif token.text == "have":
+                verb = "has"
+            elif verb.endswith("o"):
+                    verb = verb + "es"
+            elif "all" in quantifier or  "no" in quantifier:
+                if verb.endswith("y") and verb != "play":
+                    verb = verb[:-1] + "ies"
+                elif not verb.endswith("s"):
+                    verb = verb + "s"
+
+            number +=1
+            if number == 2:
+                done = True
+                if negation and verb in {"is", "has"} and not double_negation:
+                    second_part.append(verb)
+                    second_part.append("not")
+                elif negation and not double_negation:
+                    second_part.append("not")
+                    second_part.append(verb)
+                else:
+                     second_part.append(verb)
+                
+            else:
+                first_part.append(verb)
+        else:
+            if (token.dep_ in {"VERB", "ROOT", "AUX"} or token.pos_ in {"VERB", "ROOT", "AUX"}):
+                verb = token.text
+            if number == 2:
+                second_part.append(token.text)
+            else:
+                first_part.append(token.text)
+
+    
+    
+    result = ' '.join([*first_part, *second_part])
+    
+    return result
+
 
     
 def split_by_conjunctions(doc, df_index, pos_df):
     doc = [token for token in doc if token.text != ',']
 
-    sentence = ' '.join([token.text for token in doc])
-    if "all who " in sentence or "All who " in sentence:
-        
-        first_part = []
-        first_part.append("if")
-        first_part.append("one")
-        second_part = []
-        second_part.append("then")
-        second_part.append("one")
-        number = 0
-        for token in doc[2:]:        
-            if token.dep_ in {"VERB", "ROOT", "AUX"} or token.pos_ in {"VERB", "ROOT", "AUX"}:
-                verb = token.text
-                if token.text == "are":
-                    verb = "is"
-                elif token.text == "have":
-                    verb = "has"
-                number +=1
-                if number == 2:
-                    second_part.append(verb)
-                else:
-                    first_part.append(verb)
-            else:
-                if number == 2:
-                    second_part.append(token.text)
-                else:
-                    first_part.append(token.text)
-        result = ' '.join(first_part+second_part)
-        pos_df.loc[df_index, "Full sentence"] = result
-        doc = nlp(result)
-
-
+    uni= normalize_universal_sentence(doc, df_index, pos_df)
+    if uni != "":
+        pos_df.loc[df_index, "Full sentence"] = uni
+        doc = nlp(uni)
+    pos_df.loc[df_index, 'Variable'] = ""
+    for i, tok in enumerate(doc):
+        if tok.text == "one":
+            pos_df.loc[df_index, 'Variable'] += str(i)
+    
     
     split_parts = []
     current_part = []
     remaining_text = [token.text for token in doc]
-    for i,word in enumerate(remaining_text):
-        if word == "one":
-            pos_df.loc[df_index, 'Variable'] += str(i)
     length_orig_text = len(remaining_text)
     length_curr_text = len(remaining_text)
     index = 0
@@ -124,7 +192,12 @@ def split_by_conjunctions(doc, df_index, pos_df):
             current_part.append(token)
 
         elif token.dep_ == "mark" and token.text != "that": # if, because, since
-            if token.text in {"because", "since"}:
+            if token.text == "unless":
+                unless = " "+ str(len(split_parts)) +str(len(split_parts)+1)
+                split_parts.append(current_part)
+                current_part = []
+                pos_df.loc[df_index, "Unless"] += unless
+            elif token.text in {"because", "since"}:
                 if len(current_part) > 0: #I cry because I am sad
                     
                     split_parts.append(current_part)
@@ -428,9 +501,10 @@ def add_to_subject(token_index,doc,df_index, pos_df):
 
     universal_noun = ["everybody", "everyone", "all", "anyone", "everything", "anything"]
     existential_noun = ["nobody", "somebody", "someone", "something"]
-    exi = existential 
+    exi = existential.copy()
     exi.append("a")
     exi.append("an")
+    exi.append("no")
 
     if doc[i].text == "one":
         pos_df.loc[df_index, 'Variable'] = str(i)
@@ -451,7 +525,6 @@ def add_to_subject(token_index,doc,df_index, pos_df):
     
     else:
    
-
         if i > 0 and doc[i - 1].dep_ == "amod" and doc[i - 1].head.text == token.text: # HAPPY cats
             index = str(i-1) + index
             if i > 1 and doc[i - 2].dep_ == "det" and doc[i - 2].head.text == token.text: # THE happy cats          
@@ -532,20 +605,25 @@ def add_to_object(i,doc,df_index,pos_df):
 def analize_clause(doc, df_index, pos_df):
     
     skip = False
+    verb = False
     for i,toke in enumerate(doc):
         global token
         token = toke
+        if token.text in {"apart", "except"} and i < len(doc)-1 and doc[i+1].text in {"from", "for"}:
+            pos_df.loc[df_index, 'Unless'] =str(i+2)
         if token.dep_ == "auxpass" and ((i < len(doc)-1 and doc[i+1].dep_ == "ROOT") or (i < len(doc)-2 and doc[i+2].dep_ == "ROOT")) :
             pos_df.loc[df_index, "Verb"] = str(i)
             pos_df.loc[df_index, "Obj"] = str(i+1)
             if (i < len(doc)-2 and doc[i+2].dep_ == "ROOT")  and doc[i+1].dep_ == "neg":
                 pos_df.loc[df_index, 'Not operator'] +=" "+str(i+1) +" verb"
             skip = True
-        elif token.dep_ == "nsubj" or token.dep_ == "nsubjpass":
+            verb = True
+        elif token.dep_ == "nsubj" or token.dep_ == "nsubjpass" or (i==1 and token.dep_ == "compound" and doc[i-1].dep_ == "det" and token.head.dep_ == "ROOT"):
             pos_df = add_to_subject(i,doc,df_index,pos_df)
         elif token.dep_ == "ROOT" and not skip:
             pos_df = add_to_verb(i,doc,df_index,pos_df)
-        elif token.dep_ == "acomp" or token.dep_ == "dobj":
+            verb = True
+        elif (token.dep_ == "acomp" or token.dep_ == "dobj" or (token.dep_ == "attr" and token.pos_ == "NOUN")) and verb:
             pos_df = add_to_object(i,doc,df_index,pos_df)
     return pos_df
 
@@ -587,17 +665,32 @@ def format_text(text):
 
     return corrected_text.strip()
 
+
+
 def adjust_verb_forms(text):
     doc = nlp(text.strip())
     corrected_words = []
     for i,token in enumerate(doc):
         if token.pos_ == "VERB" or token.dep_ == "ROOT":
             subject = [child for child in token.children if child.dep_ in {"nsubj", "nsubjpass"}]
-            if subject:
+            if not subject:
+                subject = [child for child in token.children if child.pos_ == "PROPN"]
+            nouns =  [child for child in token.children if child.pos_ == "PROPN"]
+            if subject and not isinstance(subject, list) and not isinstance(nouns, list):
                 subject = subject[0]
                 if ((subject.text.lower() in {"he", "she", "it"} and not token.text.endswith("s"))  or (subject.pos_ == "PROPN" and not token.text.endswith("s"))):
-                    if (doc[i-1].dep_ != "aux" and (i>1 and doc[i-2].dep_ != "aux")):
-                        corrected_words.append(token.text + "s")
+                    if ((doc[i-1].dep_ != "aux" or (i>1 and doc[i-2].dep_ != "aux")) and token.text == "are"):
+                         corrected_words.append("is")
+                    elif ((doc[i-1].dep_ != "aux" or (i>1 and doc[i-2].dep_ != "aux")) and token.text == "have"):
+                         corrected_words.append("has")
+                        
+                    elif ((doc[i-1].dep_ not in {"aux", "auxpass"} or (i>1 and doc[i-2].dep_ != "aux") ) ):
+                        if token.text.endswith("y") and token.text != "play":                            
+                            corrected_words.append(token.text[:-1] + "ies")  
+                        elif token.text.endswith("o"):                            
+                            corrected_words.append(token.text + "es") 
+                        else:
+                            corrected_words.append(token.text + "s")    
                     else:
                         corrected_words.append(token.text)
                     continue
@@ -628,7 +721,6 @@ def replace_x(text):
             tokens.append(token.text)
     
     return " ".join(tokens)
-
 
 def replace_pronouns(sentence: str) -> str:
     
@@ -666,7 +758,7 @@ def merge_compound_nouns(text):
     i = 0
     while i < len(doc):
         token = doc[i]
-        if token.dep_ == "compound" and i + 1 < len(doc) and doc[i + 1].pos_ == "NOUN":
+        if token.dep_ == "compound" and i + 1 < len(doc) and doc[i + 1].pos_ == "NOUN" and (doc[i + 1].dep_ == "attr" or doc[i + 1].dep_ == "nsubj"):
             
             merged_token = token.text + doc[i + 1].text
             new_tokens.append(merged_token)
@@ -682,8 +774,15 @@ def remove_hyphens(text):
 
 def replace_all_the(text):
     
-    return text.replace("all the", "all")
+    return text.replace(" all the ", " all ")
 
+def subsitute_there_is_a(text):
+    text = text.replace("there is", "someone is")
+    text = text.replace("there exists", "someone is")
+    text = text.replace("there is not", "nobody is")
+    text = text.replace("there isn't", "nobody is")
+    text = text.replace("there does not exist", "nobody is")
+    return text
 
 def add_all_to_plural_subject(text):
     """Adds 'all' before plural subjects that lack a determiner, considering adjectives."""
@@ -721,22 +820,42 @@ def add_all_to_plural_subject(text):
 
     return " ".join(new_tokens)
 
+def fix_do_not(text):
+    text = text.replace("don't", "do not")
+    text = text.replace("doesn't", "does not")
+    text = text.replace("do n't", "do not")
+    text = text.replace("does n't", "does not")
+
+    text = re.sub(r'\bdo\b(?!\s+not\b)', '', text)
+
+    text = re.sub(r'\bdoes\b(?!\s+not\b)', '', text)
+
+    text = re.sub(r'\s{2,}', ' ', text).strip()
+
+    return text
+
 def text_label_complete(text):
     
     pos_df = pd.DataFrame(pos)
     df_index = 0
 
-    
+
     text = remove_hyphens(text)
     text = replace_x(text)
     text = format_text(text)
     text = clean_adjectives_and_auxiliaries(text)
+    text = fix_do_not(text)
+    text = subsitute_there_is_a(text)
+
     text = adjust_verb_forms(text)
+
     text = replace_all_the(text)
+
     text = replace_pronouns(text)
+
     text = merge_compound_nouns(text)
     text = add_all_to_plural_subject(text)
-
+    print(text)
 
     pos_df.loc[df_index, "Full sentence"] = text
     pos_df.loc[df_index, "Height"] = 0
@@ -857,6 +976,8 @@ def text_label(text):
     text = replace_x(text)
     text = format_text(text)
     text = clean_adjectives_and_auxiliaries(text)
+    text = fix_do_not(text)
+    text = subsitute_there_is_a(text)
     text = adjust_verb_forms(text)
     text = replace_all_the(text)
     text = replace_pronouns(text)

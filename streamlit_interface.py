@@ -4,6 +4,7 @@ from tree import TreeNode
 import pandas as pd
 
 rule_explanations = {
+    -1: "Initialization: Just placing the sentence into the node.",
     0: "Initialization: Just placing the sentence into the node.",
     1: "AND on the left (positive): Break 'A and B' into A and B.",
     2: "AND on the right (negative): Create two branches, one with ¬A and one with ¬B.",
@@ -18,25 +19,25 @@ rule_explanations = {
     11: "Existential quantifier on the left: Use a new instance P(a).",
     12: "Existential quantifier on the right: Must hold for all, show ¬P(x).",
     13: "Negation of a true statement -> The statement is false, place it in the false statements.",
-    14: "Negation of a false statement -> The statement is true, place it in the true statements."
+    14: "Negation of a false statement -> The statement is true, place it in the true statements.",
+    16: "Expansion of a universal statement"
 }
 
 examples = {
-    "Custom": ("", ""),
-    "Example 1 - Simple Negation": ("I am not sad", ""),
-    "Example 2 - Modus Tollens": ("If it is raining then the ground is wet. The ground is not wet.", "It is not raining."),
-    "Example 3 - Modus Ponens": ("If Alice sings then Bob smiles. Alice sings.", "Bob smiles."),
-    "Example 4 - Hypothetical Syllogism": ("If I eat then I am full. If I am full then I sleep. I eat.", "I sleep."),
-    "Example 5 - Disjunctive Syllogism": ("Either the lamp is on or the window is open. The lamp is not on.", "The window is open."),
-    "Example 6 - Conjunction Simplification": ("The cat is golden and the cat is happy.", "The cat is golden."),
-    "Example 7 - Negation of a Conjunction": ("It is not the case that the door is open and the window is shut.", ""),
-    "Example 8 - Universal Quantifier": ("All singers are happy. Alice is a singer.", "Alice is happy."),
-    "Example 9 - Existential Quantifier": ("Some students are smart.", ""),
-    "Example 10 - Negated Universal (¬∀ → ∃¬)": ("It is not the case that all teachers are kind.", ""),
-    "Example 11 - Biconditional": ("The moon is full if and only if the sky is clear. The moon is full.", "The sky is clear."),
-    "Example 12 - Contradiction Check": ("All dogs are animals. No animals are pets. All dogs are pets.", ""),
-    "Example 13 - Double Negation": ("It is not the case that it is not raining.", "It is raining."),
-
+    "Custom": ([], ""),
+    "Example 1 - Simple Negation": (["I am not sad"], ""),
+    "Example 2 - Modus Tollens": (["If it is raining then the ground is wet", "The ground is not wet"], "It is not raining."),
+    "Example 3 - Modus Ponens": (["If Alice sings then Bob smiles", "Alice sings"], "Bob smiles."),
+    "Example 4 - Hypothetical Syllogism": (["If I eat then I am full", "If I am full then I sleep", "I eat"], "I sleep."),
+    "Example 5 - Disjunctive Syllogism": (["Either the lamp is on or the window is open", "The lamp is not on"], "The window is open."),
+    "Example 6 - Conjunction Simplification": (["The cat is golden and the cat is happy"], "The cat is golden."),
+    "Example 7 - Negation of a Conjunction": (["It is not the case that the door is open and the window is shut"], ""),
+    "Example 8 - Universal Quantifier": (["All singers are happy", "Alice is a singer"], "Alice is happy."),
+    "Example 9 - Existential Quantifier": (["Some students are smart"], ""),
+    "Example 10 - Negated Universal (¬∀ → ∃¬)": (["It is not the case that all teachers are kind"], ""),
+    "Example 11 - Biconditional": (["The moon is full if and only if the sky is clear", "The moon is full"], "The sky is clear."),
+    "Example 12 - Contradiction Check": (["All dogs are animals", "No animals are pets", "All dogs are pets"], ""),
+    "Example 13 - Double Negation": (["It is not the case that it is not raining"], "It is raining.")
 }
 
 st.set_page_config(page_title="Semantic Tableau Solver", layout="wide")
@@ -206,8 +207,6 @@ This solver understands **simple, well-formed English sentences** — but keep i
 - `Nobody eats.`
 - `I don't love anyone.`
 - `Everyone hates everyone.`
-- `All who (verb + object) (verb + object)` -> example: All who play tennis are happy
-- `If one (verb + object), then one (verb + object)` -> use this structure for a rule that applies to everyone, example: If one plays tennis, then one is happy
 
 ---
 
@@ -219,7 +218,7 @@ This solver understands **simple, well-formed English sentences** — but keep i
   - ❌ `The cat jump.` ← (incorrect verb conjugation)
 
 - Proper nouns must be **capitalized** (`Alice`, `Bob`, `Mary`).
-- **Compound names** like `The tall man` or `The happy student` are fine.
+- **Compound names** like `The tall man` or `A happy student` are fine.
 - **Unrecognized names** may cause errors — stick with simple names or those used in examples.
 
          
@@ -234,15 +233,35 @@ if "tree_root" not in st.session_state:
 if "contradiction_status" not in st.session_state:
     st.session_state.contradiction_status = None
 
+if "premises" not in st.session_state:
+    st.session_state.premises = ["", ""]
+
+
+def build_full_sentence(premises):
+    cleaned = [p.strip().rstrip('.') + '.' for p in premises if p.strip()]
+    return ' '.join(cleaned)
+
+
 col1, col2 = st.columns(2)
 with col1:
     selected_example = st.selectbox("Choose an example:", list(examples.keys()))
 with col2:
     if selected_example != "Custom":
-        input_text, conclusion = examples[selected_example]
+        raw_texts, conclusion = examples[selected_example]
+        split_premises = []
+        for text in raw_texts:
+            parts = [p.strip() for p in text.strip().split('.') if p.strip()]
+            split_premises.extend([p + '.' for p in parts])
+        st.session_state.premises = split_premises
     else:
-        input_text = st.text_input("Enter your sentence:", key="custom_input")
-        conclusion = st.text_input("Enter your conclusion (optional):", key="custom_conclusion")
+        i = 0
+        while i < len(st.session_state.premises):
+            st.session_state.premises[i] = st.text_input(f"Premise {i+1}", st.session_state.premises[i], key=f"premise_{i}")
+            i += 1
+        if st.button("➕ Add another premise"):
+            st.session_state.premises.append("")
+        conclusion = st.text_input("Conclusion (optional):", key="conclusion_input")
+input_text = build_full_sentence(st.session_state.premises)
 
 show_full_df = st.checkbox("Show full DataFrame for each node", value=False)
 
@@ -286,10 +305,14 @@ def highlight_dataframe(df, highlight_list, true_contradictions, false_contradic
 
 def display_node(node, depth=0, parent=None):
 
-    # if node.node_id == 0:
-    #     for child in node.children:
-    #         display_node(child, depth + 1)
-    #     return
+    if node.node_id == 0 and any(
+        0 in child.value.copy().get("Rule", pd.Series(dtype=int)).dropna().tolist()
+        for child in node.children
+    ):
+
+        for child in node.children:
+             display_node(child, depth + 1)
+        return
 
     indent = "\u2007" * (depth * 4)
     node_prefix = "⚪"
@@ -335,7 +358,7 @@ def display_node(node, depth=0, parent=None):
 
                 if isinstance(highlight, str):
                     highlight = [highlight]
-                elif pd.isna(highlight):
+                elif pd.isna(highlight).any():
                     highlight = []
 
 
@@ -375,8 +398,7 @@ def display_node(node, depth=0, parent=None):
 
                 true_contradiction = row.get("True Contradiction")
                 false_contradiction = row.get("False Contradiction")
-                if pd.notna(true_contradiction) and pd.notna(false_contradiction):
-                    st.error(f"A contradiction was found because \"{true_contradiction}\" is said to be true and \"{false_contradiction}\" is said to be false.")
+                
 
             def render_statement_list(title, items, is_true, highlight_list, true_contradictions, false_contradictions, defeasible=None):
                 if items:
@@ -403,6 +425,8 @@ def display_node(node, depth=0, parent=None):
             render_statement_list("Sentences we know are true:", true_statements, is_true=True, highlight_list=highlight_list, true_contradictions=true_contradictions, false_contradictions=false_contradictions, defeasible=defeasible_statement)
             render_statement_list("Sentences we know are false:", false_statements, is_true=False, highlight_list=highlight_list, true_contradictions=true_contradictions, false_contradictions=false_contradictions, defeasible=defeasible_statement)
 
+            if pd.notna(true_contradiction) and pd.notna(false_contradiction):
+                    st.error(f"A contradiction was found because \"{true_contradiction}\" is said to be true and \"{false_contradiction}\" is said to be false.")
 
 
             if node.children:
@@ -426,7 +450,7 @@ def display_node(node, depth=0, parent=None):
 if st.button("Run Semantic Tableau Solver"):
     
     with st.spinner("Processing..."):
-        try:
+       # try:
             TreeNode.reset_tree()
             root, all_contradictions = make_tree_inference(input_text, conclusion)
             st.session_state.tree_root = root
@@ -441,19 +465,25 @@ if st.button("Run Semantic Tableau Solver"):
                 st.success("All branches have been closed. This means the initial statement logically leads to a contradiction in every case — the inference is **logically valid**.")
             else:
                 st.warning("Some branches remain open. This means there is at least one interpretation where the statements hold without contradiction — the inference is **not necessarily valid**.")
-        except Exception as e:
-            st.error(" Oops! Something went wrong while processing your sentence. Please check your input for typos or unsupported sentence structures.")
+        #except Exception as e:
+         #   st.error(" Oops! Something went wrong while processing your sentence. Please check your input for typos or unsupported sentence structures.")
 
 
 
 
 
 st.markdown("---")
-st.markdown("### Add a New Statement (Defeasibility Check)")
+st.markdown("### Extra Tools")
 
-if st.session_state.tree_root:
+def show_original_statements():
+    st.markdown("### Original Premises")
+    for i, premise in enumerate(st.session_state.premises):
+        st.markdown(f"**Premise {i+1}:** {premise}")
+    st.markdown(f"**Conclusion:** {conclusion}")
+
+def handle_add_statement():
     with st.form("defeasibility_form"):
-        new_statement = st.text_input("Enter an additional statement to test defeasibility:")
+        new_statement = st.text_input("Enter an additional statement to try and close open branches:")
         submitted = st.form_submit_button("Apply Statement to Open Branches")
 
     if submitted and new_statement:
@@ -462,12 +492,8 @@ if st.session_state.tree_root:
             leaf_nodes = get_leaves(st.session_state.tree_root)
             open_nodes = [node for node in leaf_nodes if not node.value.get("Contradiction", pd.Series(False)).any()]
 
-
             for node in open_nodes:
                 df = node.value
-            # display_node(node)
-
-
                 current_true = df.at[0, "True Statements"]
                 if isinstance(current_true, list):
                     current_true.append(new_statement)
@@ -475,13 +501,63 @@ if st.session_state.tree_root:
                     current_true = [new_statement]
                 else:
                     current_true = [current_true, new_statement]
-                
+
                 subtree_root, _ = make_tree_inference_defe(current_true, df.at[0, "False Statements"], new_statement)
                 node.children = [subtree_root]
 
             st.success("Defeasibility applied. Updated open branches with the new statement.")
-            display_node(st.session_state.tree_root)
         except Exception as e:
-            st.error(" Oops! Something went wrong while processing your sentence. Please check your input for typos or unsupported sentence structures.")
+            st.error("Oops! Something went wrong while processing your statement.")
+
+def handle_exception_rewrite():
+    
+    st.markdown("### Rewrite Premises")
+    st.markdown("""
+Statements that can be rewritten have the form 'All (noun) (verb) (object)' Some examples: 'All birds fly', 'All humans are mortal".
+
+You can rewrite them as: 'All (noun) apart from/except for (other_noun) (verb) (object)'
+
+Full example:
+
+##### Original premises:
+- All birds fly
+- Mary is a penguin
+- All penguins are birds
+
+
+##### New premises:
+- All birds except for penguins fly
+- Mary is a penguin
+- All penguins are birds
+    """)
+    show_original_statements()
+    updated_premises = []
+    for i, premise in enumerate(st.session_state.premises):
+        new_value = st.text_input(f"Premise {i+1}", value=premise, key=f"rewrite_{i}")
+        updated_premises.append(new_value.strip())
+
+    if st.button("Apply Rewritten Premises") and any(p != o for p, o in zip(updated_premises, st.session_state.premises)):
+        try:
+            st.session_state.premises = updated_premises
+            updated_input = build_full_sentence(st.session_state.premises)
+            TreeNode.reset_tree()
+            root, all_contradictions = make_tree_inference(updated_input, conclusion)
+            st.session_state.tree_root = root
+            st.session_state.contradiction_status = all_contradictions
+            st.success("Updated tree generated after rewriting premises.")
+        except Exception as e:
+            st.error("Error while re-processing with the new input.")
+
+if st.session_state.get("tree_root"):
+    st.markdown("#### Choose an option:")
+    option = st.radio("What do you want to do?", [
+        "Add statements to try and close open branches",
+        "Add exceptions to previous universal premises"
+    ])
+
+    if option == "Add statements to try and close open branches":
+        handle_add_statement()
+    elif option == "Add exceptions to previous universal premises":
+        handle_exception_rewrite()
 else:
-    st.info("Run the solver above first before using defeasibility.")
+    st.info("Run the solver above first before using defeasibility tools.")
