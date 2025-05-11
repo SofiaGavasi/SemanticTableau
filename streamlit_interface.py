@@ -34,7 +34,7 @@ examples = {
     "Example 7 - Valid Universal Quantifier": (["All singers are happy", "Mary is a singer"], "Mary is happy."),
     "Example 8 - Valid Existential Quantifier": (["Some students are smart"], "It is not the case that all students are not smart"),
     "Example 9 - Invalid Negated Universal": (["It is not the case that all books are interesting"], ""),
-    "Example 10 - Invalid Biconditional": (["The moon is full if and only if the sky is clear", "The moon is full"], "The sky is clear."),
+    "Example 10 - Valid Biconditional": (["The moon is full if and only if the sky is clear", "The moon is full"], "The sky is clear."),
     "Example 11 - Invalid Negation of a Conjunction": (["It is not the case that the door is open and the window is shut"], ""),
     "Example 12 - Valid Universal with Exception": (["All birds except for penguins fly", "Jasper is a penguin", "All penguins are birds"], "Jasper does not fly."),
     "Example 13 - Invalid Universal with Exception": (["All birds except for penguins fly", "Jasper is a penguin", "All penguins are birds"], "Jasper flies."),
