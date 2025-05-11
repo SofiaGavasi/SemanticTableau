@@ -39,7 +39,7 @@ examples = {
     "Example 12 - Valid Universal with Exception": (["All birds except for penguins fly", "Jasper is a penguin", "All penguins are birds"], "Jasper does not fly."),
     "Example 13 - Invalid Universal with Exception": (["All birds except for penguins fly", "Jasper is a penguin", "All penguins are birds"], "Jasper flies."),
     "Example 14 - Pinocchio's logic puzzle": (["It is not the case that all hats are green"], "there is a hat"),
-    "Example 15 - Pinocchio's logic puzzle": (["It is not the case that all hats are green"], "Nothing is a hat")
+    "Example 15 - Pinocchio's logic puzzle": (["It is not the case that all hats are green"], "Nobody is a hat")
 }
 
 st.set_page_config(page_title="Reasoning with Natural Language", layout="wide")
